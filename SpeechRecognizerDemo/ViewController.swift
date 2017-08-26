@@ -16,15 +16,23 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
     var audioRecorder: AVAudioRecorder!
     var audioPlayer: AVAudioPlayer!
     
+     @IBOutlet weak var mytextview: UITextView!
     
-    @IBAction func play(_ sender: Any) {
+    var audioFileName: URL!
+   
+   
+    
+    
+     func play(_ sender: Any) {
+       
         
-        print("work play")
+        
         
         if !audioRecorder.isRecording {
-            self.audioPlayer = try! AVAudioPlayer(contentsOf: audioRecorder.url)
+            self.audioPlayer = try! AVAudioPlayer(contentsOf:self.audioFileName)
             self.audioPlayer.prepareToPlay()
             self.audioPlayer.delegate = self
+            
             self.audioPlayer.play()
         }
     }
@@ -42,7 +50,11 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
     
     
     
-    @IBAction func didTapSpeechRecognitionButton() {
+   
+    @IBAction func speechRecognizerButton(_ sender: Any) {
+    
+        
+        audioRecorder = nil
         
         // Initialize the speech recogniter with your preffered language
         guard let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en_US")) else {
@@ -58,28 +70,39 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
         
         SFSpeechRecognizer.requestAuthorization { authStatus in
             if (authStatus == .authorized) {
-                // Grab a local audio sample to parse
-                let fileURL = URL(fileURLWithPath: Bundle.main.path(forResource: "recording", ofType: "m4a")!)
                 
-                // Get the party started and watch for results in the completion block.
-                // It gets fired every time a new word (aka transcription) gets detected.
-                let request = SFSpeechURLRecognitionRequest(url: fileURL)
+                let request = SFSpeechURLRecognitionRequest(url: self.audioFileName)
                 
                 speechRecognizer.recognitionTask(with: request, resultHandler: { (result, error) in
                     print(result?.bestTranscription ?? "")
                     
-                    if (result?.isFinal)! {
-                        let alert = UIAlertController(title: "Speech recognition completed!", message: result?.bestTranscription.formattedString, preferredStyle: .alert)
+                    
+                    
+                    if result !== nil{
                         
-                        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-                        self.show(alert, sender: self)
+                        if (result?.isFinal)!{
+                        
+                        self.mytextview.text.append((result?.bestTranscription.formattedString)! + "\n")
+                        
+                        print("print完了")
+                        }
+                    }else{
+                    
+                        print("nilですよ")
+                        
+                        self.mytextview.text.append("recognize error" + "\n")
                     }
+                    
+                    
+                    
+                    
+                    
                 })
             } else {
                 print("Error: Speech-API not authorized!");
             }
         }
-    }
+   }
     
     // MARK: Speech Recognizer Delegate (only called when using the advanced recognition technique)
     
@@ -119,6 +142,10 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+           
+        
+        
         // Do any additional setup after loading the view, typically from a nib.
         recordingSession = AVAudioSession.sharedInstance()
         do {
@@ -127,7 +154,7 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
             recordingSession.requestRecordPermission() { [unowned self] allowed in
                 DispatchQueue.main.async {
                     if allowed {
-                        self.loadRecordingUI()
+                       self.loadRecordingUI()
                     } else {
                         // failed to record!
                     }
@@ -139,18 +166,52 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
     }
     
     func loadRecordingUI() {
-        recordButton = UIButton(frame: CGRect(x: 64, y: 64, width: 300, height: 64))
-        recordButton.setTitle("Tap to Record", for: .normal)
+        //サブ的な
+        
+        
+       // recordButton.backgroundColor = UIColor.red
+        //メイン的な
+        recordButton = UIButton(frame: CGRect(x: 8, y: 74, width: 359, height: 585))
+        recordButton.setTitle("Record", for: .normal)
         recordButton.titleLabel?.font = UIFont.preferredFont(forTextStyle: UIFontTextStyle.title1)
-        recordButton.backgroundColor = UIColor.red
+        recordButton.setTitleColor(UIColor.blue, for: .normal)
+       
+       
         recordButton.addTarget(self, action: #selector(recordTapped), for: .touchUpInside)
         view.addSubview(recordButton)
     }
     
-    func startRecording() {
-        let audioFilename = Bundle.main.bundleURL.appendingPathComponent("recording.m4a")
-//        let audioFilename = getDocumentsDirectory().appendingPathComponent("recording.m4a") // file is saved
+    //↓ is not working
+    @IBAction func recordButton(_ sender: Any) {
         
+        
+    }
+    
+    
+    
+    
+    func startRecording() {
+        // here
+        
+        
+        //↓　is written by luke.
+       // audioFileName = Bundle.main.bundleURL.appendingPathComponent("recording.m4a")
+        
+        
+        
+        
+        
+        
+        //↓It's will be working
+        audioFileName = getDocumentsDirectory().appendingPathComponent("recording.m4a")
+        
+        
+        
+        
+        
+        
+        
+        print(String(describing: audioFileName))
         let settings = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
             AVSampleRateKey: 12000,
@@ -159,7 +220,7 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
         ]
         
         do {
-            audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+            audioRecorder = try AVAudioRecorder(url: audioFileName, settings: settings)
             audioRecorder.delegate = self as? AVAudioRecorderDelegate
             audioRecorder.record()
             
@@ -183,13 +244,28 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
         
         if success {
             recordButton.setTitle("Tap to Re-record", for: .normal)
+            //recognizeの関数を呼ぶ
+            speechRecognizerButton(_sender: (Any).self)
+            
+            
         } else {
             recordButton.setTitle("Tap to Record", for: .normal)
+            
+            /*
+            下買えたから
+            
+            */
+            
             audioRecorder = nil
             
             // recording failed :(
         }
     }
+    
+    
+    
+    
+    
     func recordTapped() {
         if audioRecorder == nil {
             startRecording()
@@ -197,6 +273,10 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
             finishRecording(success: true)
         }
     }
+    
+    
+    
+    
     
     func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         if !flag {
@@ -211,4 +291,3 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate, SFSpeechReco
     
     
 }
-
