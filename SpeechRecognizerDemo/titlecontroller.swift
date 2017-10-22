@@ -40,3 +40,11 @@ class titlecontroller: UIViewController {
     
     
 }
+
+
+class mydictionary: UIReferenceLibraryViewController{
+    
+    
+}
+
+
